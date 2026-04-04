@@ -1,19 +1,32 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { User, Mail, Lock, Loader2, UserPlus, LogIn, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { login, signup, clearError } from "../store/slices/authSlice";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  
+  const { loading, error, token } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     password: "",
   });
+
+  useEffect(() => {
+    if (token) {
+      navigate("/");
+    }
+  }, [token, navigate]);
+
+  useEffect(() => {
+    dispatch(clearError());
+  }, [isLogin, dispatch]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -22,34 +35,15 @@ const Auth = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Client-side validation: Min password length (6 characters as per model)
-    if (!isLogin && formData.password.length < 6 || formData.password.length > 6) {
-      setError("Password must be at least 6 characters long");
+    if (!isLogin && (formData.password.length < 6)) {
+      // Manual error set or dispatch a custom error if needed
       return;
     }
 
-    setLoading(true);
-    setError("");
-
-    const endpoint = isLogin ? "/api/auth/login" : "/api/auth/signup";
-    
-    try {
-      const response = await fetch(`http://localhost:5000${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Authentication failed");
-
-      localStorage.setItem("todo_token", data.token);
-      localStorage.setItem("todo_user", JSON.stringify(data.user));
-      navigate("/");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+    if (isLogin) {
+      dispatch(login({ email: formData.email, password: formData.password }));
+    } else {
+      dispatch(signup(formData));
     }
   };
 
@@ -128,11 +122,10 @@ const Auth = () => {
               )}
             </button>
             
-            {/* Password Requirement Notice */}
             {!isLogin && (
               <div className="flex items-center gap-1.5 mt-2 ml-1 px-1">
-                <ShieldCheck className={cn("w-3 h-3 transition-colors", formData.password.length >= 6 ? "text-green-500" : "text-slate-600")} />
-                <p className={cn("text-[9px] sm:text-[10px] font-medium tracking-wide transition-colors", formData.password.length >= 6 ? "text-green-500/80" : "text-slate-500")}>
+                <ShieldCheck className={formData.password.length >= 6 ? "text-green-500" : "text-slate-600"} />
+                <p className={formData.password.length >= 6 ? "text-green-500/80" : "text-slate-500"}>
                   Password must be at least 6 characters
                 </p>
               </div>

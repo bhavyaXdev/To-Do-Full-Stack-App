@@ -3,9 +3,11 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AppContainer from "./To-Do-App-Container/AppContainer";
 import Auth from "./To-Do-App-Container/Auth";
 
+import { useSelector } from "react-redux";
+
 // Simple Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem("todo_token");
+  const { token } = useSelector((state) => state.auth);
   if (!token) return <Navigate to="/auth" />;
   return children;
 };

@@ -5,69 +5,37 @@ import {
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { logout } from "../store/slices/authSlice";
+import { fetchTasks, addTask, updateTask, deleteTask } from "../store/slices/taskSlice";
 
 const cn = (...inputs) => twMerge(clsx(inputs));
 
-const API_URL = "https://to-do-full-stack-app-aeba.onrender.com/api/tasks";
-
 const AppContainer = () => {
-  const [tasks, setTasks] = useState([]);
   const [inputVal, setInputVal] = useState("");
   const [editId, setEditId] = useState(null);
   const [editValue, setEditValue] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem("todo_user")));
+  
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  
+  const { user, token } = useSelector((state) => state.auth);
+  const { tasks, loading: isLoading } = useSelector((state) => state.tasks);
 
   useEffect(() => {
-    const token = localStorage.getItem("todo_token");
     if (!token) {
       navigate("/auth");
       return;
     }
-    fetchTasks(token);
-  }, [navigate]);
-
-  const fetchTasks = async (token = localStorage.getItem("todo_token")) => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(API_URL, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (!response.ok) {
-         if (response.status === 401) handleLogout();
-         throw new Error("Connection failed");
-      }
-      const data = await response.json();
-      setTasks(data);
-    } catch (error) {
-      console.error("Fetch error:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    dispatch(fetchTasks());
+  }, [token, navigate, dispatch]);
 
   const handleAddTask = async (e) => {
     e.preventDefault();
     if (!inputVal.trim()) return;
     const newTaskText = inputVal;
     setInputVal("");
-    try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { 
-           "Content-Type": "application/json",
-           "Authorization": `Bearer ${localStorage.getItem("todo_token")}`
-        },
-        body: JSON.stringify({ text: newTaskText }),
-      });
-      if (response.ok) {
-        const newTask = await response.json();
-        setTasks([newTask, ...tasks]);
-      }
-    } catch (error) {
-      console.error("Creation error:", error);
-    }
+    dispatch(addTask(newTaskText));
   };
 
   const handleEdit = (task) => {
@@ -75,64 +43,28 @@ const AppContainer = () => {
       setEditId(null);
       return;
     }
-    setEditId(task.id);
+    setEditId(task._id || task.id);
     setEditValue(task.text);
   };
 
   const handleSaveEdit = async (id) => {
     if (!editValue.trim()) return;
-    try {
-      const response = await fetch(`${API_URL}/${id}`, {
-        method: "PUT",
-        headers: { 
-           "Content-Type": "application/json",
-           "Authorization": `Bearer ${localStorage.getItem("todo_token")}`
-        },
-        body: JSON.stringify({ text: editValue }),
-      });
-      if (response.ok) {
-        const updatedTask = await response.json();
-        setTasks(tasks.map((t) => (t.id === id ? updatedTask : t)));
-        setEditId(null);
-      }
-    } catch (error) {
-      console.error("Update error:", error);
-    }
+    dispatch(updateTask({ id, updates: { text: editValue } }))
+      .unwrap()
+      .then(() => setEditId(null));
   };
 
   const toggleComplete = async (task) => {
-    try {
-      const oldTasks = [...tasks];
-      setTasks(tasks.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t));
-      const response = await fetch(`${API_URL}/${task.id}`, {
-        method: "PUT",
-        headers: { 
-           "Content-Type": "application/json",
-           "Authorization": `Bearer ${localStorage.getItem("todo_token")}`
-        },
-        body: JSON.stringify({ completed: !task.completed }),
-      });
-      if (!response.ok) setTasks(oldTasks);
-    } catch (error) {
-      console.error("Toggle error:", error);
-    }
+     const id = task._id || task.id;
+     dispatch(updateTask({ id, updates: { completed: !task.completed } }));
   };
 
   const handleDelete = async (id) => {
-    try {
-      const response = await fetch(`${API_URL}/${id}`, { 
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${localStorage.getItem("todo_token")}` }
-      });
-      if (response.ok) setTasks(tasks.filter((t) => t.id !== id));
-    } catch (error) {
-      console.error("Delete error:", error);
-    }
+     dispatch(deleteTask(id));
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("todo_token");
-    localStorage.removeItem("todo_user");
+    dispatch(logout());
     navigate("/auth");
   };
 
@@ -182,7 +114,7 @@ const AppContainer = () => {
             value={inputVal}
             onChange={(e) => setInputVal(e.target.value)}
           />
-          <button type="submit" disabled={!inputVal.trim()} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-30 transition-all rounded-2xl px-5 sm:px-6 font-bold shadow-xl shadow-blue-500/20 active:scale-95 border border-white/10">
+          <button type="submit" disabled={!inputVal.trim()} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-30 transition-all rounded-2xl px-5 sm:px-6 font-bold shadow-xl shadow-blue-600/20 active:scale-95 border border-white/10">
             <Plus className="w-6 h-6 stroke-[3px]" />
           </button>
         </form>
@@ -199,19 +131,20 @@ const AppContainer = () => {
               <p className="text-slate-400 text-xs sm:text-sm font-bold">Nothing here yet</p>
             </div>
           ) : (
-            tasks.map((task) => (
-              <div key={task.id} className={cn("group flex items-center gap-4 p-4 rounded-2xl border transition-all h-14 sm:h-16 shrink-0", task.completed ? "bg-slate-800/10 border-white/5 opacity-60" : "bg-white/5 border-white/5 hover:bg-white/10 shadow-sm")}>
-                {editId === task.id ? (
+            tasks.map((task) => {
+              const taskId = task._id || task.id;
+              return (
+              <div key={taskId} className={cn("group flex items-center gap-4 p-4 rounded-2xl border transition-all h-14 sm:h-16 shrink-0", task.completed ? "bg-slate-800/10 border-white/5 opacity-60" : "bg-white/5 border-white/5 hover:bg-white/10 shadow-sm")}>
+                {editId === taskId ? (
                   <div className="flex-1 flex gap-2 items-center">
                     <input type="text" autoFocus className="flex-1 bg-slate-900/80 border border-blue-500/30 rounded-xl px-3 py-1.5 text-sm text-white outline-none" value={editValue} onChange={(e) => setEditValue(e.target.value)} />
                     <div className="flex gap-1">
-                      <button onClick={() => handleSaveEdit(task.id)} className="p-2 text-green-400 hover:bg-green-400/10 rounded-xl"><Check className="w-4 h-4" /></button>
+                      <button onClick={() => handleSaveEdit(taskId)} className="p-2 text-green-400 hover:bg-green-400/10 rounded-xl"><Check className="w-4 h-4" /></button>
                       <button onClick={() => handleEdit(null)} className="p-2 text-rose-400 hover:bg-rose-400/10 rounded-xl"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
                 ) : (
                   <>
-                    {/* CUSTOM CIRCULAR CHECKBOX */}
                     <button 
                       onClick={() => toggleComplete(task)}
                       className={cn(
@@ -228,12 +161,12 @@ const AppContainer = () => {
                     
                     <div className="flex gap-1 items-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
                       <button onClick={() => handleEdit(task)} className="p-2 text-slate-500 hover:text-white rounded-xl bg-white/0 hover:bg-white/5 transition-colors"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(task.id)} className="p-2 text-rose-500/30 hover:text-rose-500 rounded-xl bg-white/0 hover:bg-rose-500/5 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDelete(taskId)} className="p-2 text-rose-500/30 hover:text-rose-500 rounded-xl bg-white/0 hover:bg-rose-500/5 transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </>
                 )}
               </div>
-            ))
+            )})
           )}
         </div>
       </div>
