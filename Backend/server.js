@@ -16,6 +16,10 @@ app.use(express.json());
 app.use('/api/auth', authRouter); // Auth routes (Signup, Login)
 app.use('/api', taskRouter); // Protected Task routes
 
+app.get('/', (req, res) => {
+  console.log("Backend is live!");
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`\n Backend is live!`);
