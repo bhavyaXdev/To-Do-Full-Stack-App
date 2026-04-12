@@ -97,7 +97,7 @@ const AppContainer = () => {
           <div className="flex gap-4">
              <div className="text-right">
                 <span className="block text-xl sm:text-2xl font-black text-white leading-none">{tasks.filter(t => !t.completed).length}</span>
-                <span className="text-[8px] sm:text-[9px] uppercase tracking-widest text-slate-600 font-black">Missing</span>
+                <span className="text-[8px] sm:text-[9px] uppercase tracking-widest text-slate-600 font-black">Pending</span>
              </div>
              <div className="text-right">
                 <span className="block text-xl sm:text-2xl font-black text-blue-400 leading-none">{tasks.filter(t => t.completed).length}</span>
