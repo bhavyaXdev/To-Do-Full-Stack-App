@@ -1,31 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
-const taskSchema = new mongoose.Schema({
-  text: {
-    type: String,
-    required: [true, 'Task content is required'],
-    trim: true,
-  },
-  completed: {
-    type: Boolean,
-    default: false,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-// Transform subdocument to have 'id' instead of '_id'
-taskSchema.set('toJSON', {
-  transform: (document, returnedObject) => {
-    returnedObject.id = returnedObject._id.toString();
-    delete returnedObject._id;
-    delete returnedObject.__v;
-  },
-});
-
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -45,14 +20,13 @@ const userSchema = new mongoose.Schema({
     required: true,
     minlength: 6,
   },
-  tasks: [taskSchema], // MERGED COLLECTION: Tasks as subdocuments
   createdAt: {
     type: Date,
     default: Date.now,
   },
 });
 
-// Hash the password before saving (Modern Async Hook)
+// Hash the password before saving
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
   try {
@@ -71,14 +45,10 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 // Remove password/metadata from JSON representation
 userSchema.set('toJSON', {
   transform: (document, returnedObject) => {
+    returnedObject.id = returnedObject._id.toString();
+    delete returnedObject._id;
     delete returnedObject.password;
     delete returnedObject.__v;
-    if (returnedObject.tasks) {
-       returnedObject.tasks.forEach(t => {
-         t.id = t._id?.toString() || t.id;
-         delete t._id;
-       });
-    }
   },
 });
 

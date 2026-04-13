@@ -100,7 +100,7 @@ const Auth = () => {
           </div>
 
           <div className="relative group">
-            <Lock className="absolute left-4 md:top-7 top-6 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+            <Lock className="absolute left-4 top-1/3 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
             <input
               type={showPassword ? "text" : "password"}
               name="password"
@@ -113,7 +113,7 @@ const Auth = () => {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 md:top-7 top-6 outline-none -translate-y-1/2 text-slate-500 hover:text-blue-400 transition-colors p-1"
+              className="absolute right-4 top-1/3 outline-none -translate-y-1/2 text-slate-500 hover:text-blue-400 transition-colors p-1"
             >
               {showPassword ? (
                 <EyeOff className="w-4 h-4 sm:w-5 sm:h-5 " />
@@ -123,7 +123,7 @@ const Auth = () => {
             </button>
             
             {!isLogin && (
-              <div className="flex items-center gap-1.5 mt-4 ml-1 px-1 text-xs sm:text-sm">
+              <div className="flex items-center gap-1.5 mt-2 ml-1 px-1">
                 <ShieldCheck className={formData.password.length >= 6 ? "text-green-500" : "text-slate-600"} />
                 <p className={formData.password.length >= 6 ? "text-green-500/80" : "text-slate-500"}>
                   Password must be at least 6 characters

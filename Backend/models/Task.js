@@ -10,6 +10,11 @@ const taskSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  status: {
+    type: String,
+    enum: ['pending', 'in-progress', 'complete'],
+    default: 'pending',
+  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -21,7 +26,7 @@ const taskSchema = new mongoose.Schema({
   },
 });
 
-// Transform the task object when it's sent as JSON
+// Transform the task object when sent as JSON
 taskSchema.set('toJSON', {
   transform: (document, returnedObject) => {
     returnedObject.id = returnedObject._id.toString();

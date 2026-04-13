@@ -1,89 +1,73 @@
 import express from 'express';
-import User from "../models/User.js";
-import auth from "../middleware/auth.js";
+import Task from '../models/Task.js';
+import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
-// GET all tasks (from User document)
-router.get("/tasks", auth, async (req, res) => {
+// GET all tasks for the logged-in user
+router.get('/tasks', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: "User not found" });
-    
-    // Sort tasks by date (latest first)
-    const tasks = user.tasks.sort((a, b) => b.createdAt - a.createdAt);
+    const tasks = await Task.find({ userId: req.user.id }).sort({ createdAt: -1 });
     res.json(tasks);
   } catch (error) {
-    console.error("Fetch error:", error);
-    res.status(500).json({ error: "Failed to fetch tasks" });
+    console.error('Fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch tasks' });
   }
 });
 
-// POST a new task (pushing to User document)
-router.post("/tasks", auth, async (req, res) => {
+// POST a new task
+router.post('/tasks', auth, async (req, res) => {
   const { text } = req.body;
   if (!text) {
-    return res.status(400).json({ error: "Task content is required" });
+    return res.status(400).json({ error: 'Task content is required' });
   }
 
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    const newTask = { text };
-    user.tasks.unshift(newTask); // Push to start of array
-    await user.save();
-    
-    // Send back the first task (the new one)
-    res.status(201).json(user.tasks[0]);
+    const task = new Task({ text, userId: req.user.id });
+    await task.save();
+    res.status(201).json(task);
   } catch (error) {
-    console.error("Creation error:", error);
-    res.status(500).json({ error: "Failed to save task" });
+    console.error('Creation error:', error);
+    res.status(500).json({ error: 'Failed to save task' });
   }
 });
 
-// PUT update a task (editing User subdocument)
-router.put("/tasks/:id", auth, async (req, res) => {
+// PUT update a task (only owner can update)
+router.put('/tasks/:id', auth, async (req, res) => {
   const { id } = req.params;
-  const { text, completed } = req.body;
+  const { text, completed, status } = req.body;
 
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: "User not found" });
+    const updates = {};
+    if (text !== undefined) updates.text = text;
+    if (completed !== undefined) updates.completed = completed;
+    if (status !== undefined) updates.status = status;
 
-    const task = user.tasks.id(id);
-    if (!task) return res.status(404).json({ error: "Task not found" });
+    const task = await Task.findOneAndUpdate(
+      { _id: id, userId: req.user.id },  // ensures ownership
+      updates,
+      { new: true, runValidators: true }
+    );
 
-    if (text !== undefined) task.text = text;
-    if (completed !== undefined) task.completed = completed;
-    
-    await user.save();
+    if (!task) return res.status(404).json({ error: 'Task not found' });
     res.json(task);
   } catch (error) {
-    console.error("Update error:", error);
-    res.status(500).json({ error: "Failed to update task" });
+    console.error('Update error:', error);
+    res.status(500).json({ error: 'Failed to update task' });
   }
 });
 
-// DELETE a task (pulling from User document)
-router.delete("/tasks/:id", auth, async (req, res) => {
+// DELETE a task (only owner can delete)
+router.delete('/tasks/:id', auth, async (req, res) => {
   const { id } = req.params;
 
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    const task = user.tasks.id(id);
-    if (!task) return res.status(404).json({ error: "Task not found" });
-
-    // Use pull to remove the subdocument
-    user.tasks.pull(id);
-    await user.save();
-    
+    const task = await Task.findOneAndDelete({ _id: id, userId: req.user.id });
+    if (!task) return res.status(404).json({ error: 'Task not found' });
     res.status(204).send();
   } catch (error) {
-    console.error("Deletion error:", error);
-    res.status(500).json({ error: "Failed to delete task" });
+    console.error('Deletion error:', error);
+    res.status(500).json({ error: 'Failed to delete task' });
   }
 });
 

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://to-do-full-stack-app-aeba.onrender.com/api';
+const API_URL = 'https://todo-vf4p.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_URL,
